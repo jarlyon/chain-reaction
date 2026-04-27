@@ -2,7 +2,6 @@
 //  APP  —  bootstraps UI, wires all event listeners
 // ─────────────────────────────────────────────────────────
 
-// ── Screen helpers ────────────────────────────────────────
 function showGameScreen() {
   document.getElementById('screen-auth').classList.remove('active');
   document.getElementById('screen-game').classList.add('active');
@@ -14,32 +13,69 @@ function showAuthScreen() {
   document.getElementById('screen-auth').classList.add('active');
 }
 
-// ── Modal helpers ─────────────────────────────────────────
-function openModal(id) {
-  document.getElementById(id).classList.remove('hidden');
-}
+function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-function closeModal(id) {
-  document.getElementById(id).classList.add('hidden');
-}
-
-// ── Boot ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
 
-  // Init auth (handles screen routing)
+  // Auth
   initAuth();
 
   // Mode buttons
   document.getElementById('mode-easy').addEventListener('click', () => setMode('easy'));
   document.getElementById('mode-hard').addEventListener('click', () => setMode('hard'));
 
-  // Game inputs
-  document.getElementById('btn-submit').addEventListener('click', submitGuess);
-  document.getElementById('word-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') submitGuess();
-  });
+  // Game buttons
+  document.getElementById('btn-submit') && document.getElementById('btn-submit').addEventListener('click', submitGuess);
   document.getElementById('btn-hint').addEventListener('click', useHint);
   document.getElementById('btn-new').addEventListener('click', () => initGame());
+
+  // Hidden input keyboard handler (tile typing)
+  const hiddenInput = document.getElementById('hidden-input');
+
+  hiddenInput.addEventListener('keydown', e => {
+    if (gameOver || currentRow >= puzzle.words.length) return;
+    const entry  = puzzle.words[currentRow];
+    const locked = hintedLetters[currentRow];
+    const typed  = typedLetters[currentRow];
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitGuess();
+      return;
+    }
+
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (cursorPos >= locked) {
+        if (typed[cursorPos]) {
+          typed[cursorPos] = null;
+        } else if (cursorPos > locked) {
+          cursorPos--;
+          typed[cursorPos] = null;
+        }
+      }
+      renderTiles(currentRow);
+      return;
+    }
+
+    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+      e.preventDefault();
+      let pos = Math.max(cursorPos, locked);
+      if (pos < entry.word.length) {
+        typed[pos] = e.key.toUpperCase();
+        if (pos + 1 < entry.word.length) cursorPos = pos + 1;
+        else cursorPos = pos;
+      }
+      renderTiles(currentRow);
+    }
+  });
+
+  hiddenInput.addEventListener('blur', () => {
+    if (!gameOver && puzzle && currentRow < puzzle.words.length) {
+      setTimeout(focusHiddenInput, 80);
+    }
+  });
 
   // Stats modal
   document.getElementById('btn-stats-open').addEventListener('click', () => {
@@ -72,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function showInstallBanner() {
     if (document.getElementById('install-banner')) return;
     if (localStorage.getItem('install-dismissed')) return;
-
     const banner = document.createElement('div');
     banner.className = 'install-banner';
     banner.id = 'install-banner';
@@ -82,25 +117,21 @@ document.addEventListener('DOMContentLoaded', () => {
       <button class="dismiss" id="install-no">✕</button>
     `;
     document.body.appendChild(banner);
-
     document.getElementById('install-yes').addEventListener('click', async () => {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
+      await deferredPrompt.userChoice;
       deferredPrompt = null;
       banner.remove();
     });
-
     document.getElementById('install-no').addEventListener('click', () => {
       localStorage.setItem('install-dismissed', '1');
       banner.remove();
     });
   }
 
-  // Register service worker
+  // Service worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(err => {
-      console.warn('SW registration failed:', err);
-    });
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW failed:', err));
   }
 });

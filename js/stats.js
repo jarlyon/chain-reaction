@@ -1,10 +1,10 @@
 // ─────────────────────────────────────────────────────────
-//  STATS  —  save results to Firestore, load for display
+//  STATS
+//  Tracks: attempted, completed, avg wrong guesses per completion
 // ─────────────────────────────────────────────────────────
 
-// ── Save a game result ────────────────────────────────────
 async function saveGameResult(result) {
-  if (!currentUser) return; // guests don't persist
+  if (!currentUser) return;
 
   const ref = db.collection('users').doc(currentUser.uid);
 
@@ -17,60 +17,59 @@ async function saveGameResult(result) {
       const stats  = data.stats || {};
       const recent = data.recentGames || [];
 
-      // Update aggregate stats
-      const played      = (stats.played || 0) + 1;
-      const wins        = (stats.wins || 0) + (result.won ? 1 : 0);
-      const hintsUsed   = (stats.hintsUsed || 0) + result.hintsUsed;
-      const wrongGuesses = (stats.wrongGuesses || 0) + result.wrongGuesses;
+      const attempted  = (stats.attempted  || 0) + 1;
+      const completed  = (stats.completed  || 0) + (result.won ? 1 : 0);
+      const hintsUsed  = (stats.hintsUsed  || 0) + result.hintsUsed;
+      const totalWrong = (stats.totalWrong || 0) + result.wrongGuesses;
+
+      // totalWrongOnCompletions: sum of wrong guesses only on games that were won
+      // used to calculate avg attempts per completion
+      const totalWrongOnCompletions = (stats.totalWrongOnCompletions || 0) +
+        (result.won ? result.wrongGuesses : 0);
 
       // Streak
-      let streak     = stats.streak || 0;
+      let streak     = stats.streak     || 0;
       let bestStreak = stats.bestStreak || 0;
-      if (result.won) {
-        streak++;
-        if (streak > bestStreak) bestStreak = streak;
-      } else {
-        streak = 0;
-      }
+      if (result.won) { streak++; if (streak > bestStreak) bestStreak = streak; }
+      else streak = 0;
 
       // Mode breakdown
-      const modeKey = result.mode; // 'easy' or 'hard'
-      const modeStats = stats[modeKey] || { played: 0, wins: 0 };
-      modeStats.played++;
-      if (result.won) modeStats.wins++;
+      const modeKey   = result.mode;
+      const modeStats = stats[modeKey] || { attempted: 0, completed: 0 };
+      modeStats.attempted++;
+      if (result.won) modeStats.completed++;
 
       // Recent games (keep last 10)
       const recentEntry = {
-        puzzleId:  result.puzzleId,
-        theme:     result.theme,
-        mode:      result.mode,
-        won:       result.won,
-        solved:    result.solved,
-        total:     result.total,
-        hintsUsed: result.hintsUsed,
-        timestamp: result.timestamp
+        puzzleId:    result.puzzleId,
+        theme:       result.theme,
+        mode:        result.mode,
+        won:         result.won,
+        solved:      result.solved,
+        total:       result.total,
+        hintsUsed:   result.hintsUsed,
+        wrongGuesses:result.wrongGuesses,
+        timestamp:   result.timestamp
       };
       const updatedRecent = [recentEntry, ...recent].slice(0, 10);
 
       tx.update(ref, {
         stats: {
           ...stats,
-          played, wins, streak, bestStreak, hintsUsed, wrongGuesses,
+          attempted, completed, hintsUsed, totalWrong,
+          totalWrongOnCompletions, streak, bestStreak,
           [modeKey]: modeStats
         },
         recentGames: updatedRecent
       });
     });
 
-    // Refresh stats display if modal is open
     loadUserStats(currentUser.uid);
-
   } catch (err) {
     console.warn('Failed to save game result:', err);
   }
 }
 
-// ── Load and display stats ────────────────────────────────
 async function loadUserStats(uid) {
   try {
     const snap = await db.collection('users').doc(uid).get();
@@ -83,26 +82,32 @@ async function loadUserStats(uid) {
 }
 
 function renderStatsModal(stats, recent) {
-  const played     = stats.played     || 0;
-  const wins       = stats.wins       || 0;
-  const winPct     = played > 0 ? Math.round((wins / played) * 100) : 0;
-  const streak     = stats.streak     || 0;
-  const bestStreak = stats.bestStreak || 0;
-  const hintsUsed  = stats.hintsUsed  || 0;
+  const attempted   = stats.attempted   || 0;
+  const completed   = stats.completed   || 0;
+  const hintsUsed   = stats.hintsUsed   || 0;
+  const streak      = stats.streak      || 0;
+  const bestStreak  = stats.bestStreak  || 0;
 
-  setText('ms-played',      played);
-  setText('ms-wins',        wins);
-  setText('ms-winpct',      winPct + '%');
+  // Avg wrong guesses per completion (lower = better)
+  // = total wrong guesses across won games / number of wins
+  const totalWrongOnCompletions = stats.totalWrongOnCompletions || 0;
+  const avgAttempts = completed > 0
+    ? (totalWrongOnCompletions / completed).toFixed(1)
+    : '—';
+
+  setText('ms-attempted',   attempted);
+  setText('ms-completed',   completed);
+  setText('ms-avg-attempts', avgAttempts);
   setText('ms-streak',      streak);
   setText('ms-best-streak', bestStreak);
   setText('ms-hints',       hintsUsed);
 
-  const easy = stats.easy || { played: 0, wins: 0 };
-  const hard = stats.hard || { played: 0, wins: 0 };
-  setText('ms-easy-wins',   easy.wins);
-  setText('ms-easy-played', easy.played);
-  setText('ms-hard-wins',   hard.wins);
-  setText('ms-hard-played', hard.played);
+  const easy = stats.easy || { attempted: 0, completed: 0 };
+  const hard = stats.hard || { attempted: 0, completed: 0 };
+  setText('ms-easy-completed', easy.completed || 0);
+  setText('ms-easy-attempted', easy.attempted || 0);
+  setText('ms-hard-completed', hard.completed || 0);
+  setText('ms-hard-attempted', hard.attempted || 0);
 
   // Recent games list
   const list = document.getElementById('recent-games-list');
@@ -112,13 +117,15 @@ function renderStatsModal(stats, recent) {
     return;
   }
   recent.forEach(g => {
-    const row = document.createElement('div');
+    const row  = document.createElement('div');
     row.className = 'recent-game-row';
     const date = new Date(g.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const wrongStr = g.wrongGuesses > 0 ? ` · ${g.wrongGuesses} wrong` : '';
+    const hintStr  = g.hintsUsed   > 0 ? ` · ${g.hintsUsed} hint${g.hintsUsed !== 1 ? 's' : ''}` : '';
     row.innerHTML = `
       <div class="rg-left">
         <div class="rg-theme">${g.theme || 'untitled'}</div>
-        <div class="rg-meta">${date} · ${g.mode} · ${g.solved}/${g.total} solved${g.hintsUsed ? ` · ${g.hintsUsed} hint${g.hintsUsed !== 1 ? 's' : ''}` : ''}</div>
+        <div class="rg-meta">${date} · ${g.mode} · ${g.solved}/${g.total} solved${wrongStr}${hintStr}</div>
       </div>
       <div class="rg-result ${g.won ? 'win' : 'loss'}">${g.won ? 'win' : 'loss'}</div>
     `;

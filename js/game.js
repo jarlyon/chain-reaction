@@ -5,11 +5,10 @@
 const MAX_WRONG = 5;
 const MAX_HINTS = 3;
 
-let puzzle, currentRow, hintsLeft, wrongCount, rowStates, hintedLetters, gameOver, gameMode;
+let puzzle, currentRow, hintsLeft, wrongCount, rowStates, hintedLetters, gameOver, gameMode, typedLetters, cursorPos;
 gameMode = 'easy';
-
-// ── Pick a random puzzle (avoid repeating last) ──────────
 let lastPuzzleId = null;
+
 function pickPuzzle() {
   const pool = PUZZLES.filter(p => p.id !== lastPuzzleId);
   const p = pool[Math.floor(Math.random() * pool.length)];
@@ -17,45 +16,40 @@ function pickPuzzle() {
   return p;
 }
 
-// ── Init / reset ─────────────────────────────────────────
-function initGame(puzzleOverride) {
-  puzzle       = puzzleOverride || pickPuzzle();
-  currentRow   = 0;
-  hintsLeft    = MAX_HINTS;
-  wrongCount   = 0;
-  gameOver     = false;
-  rowStates    = puzzle.words.map(() => ({ solved: false, revealed: false }));
+function initGame() {
+  puzzle        = pickPuzzle();
+  currentRow    = 0;
+  hintsLeft     = MAX_HINTS;
+  wrongCount    = 0;
+  gameOver      = false;
+  rowStates     = puzzle.words.map(() => ({ solved: false, revealed: false }));
   hintedLetters = puzzle.words.map(() => 1);
+  typedLetters  = puzzle.words.map(w => new Array(w.word.length).fill(null));
+  cursorPos     = 1;
 
-  // Theme badge
-  const badge = document.getElementById('theme-badge');
-  badge.textContent = puzzle.theme || '\u00a0';
-
-  // Enable inputs
-  document.getElementById('word-input').disabled = false;
-  document.getElementById('btn-submit').disabled = false;
-  if (gameMode === 'easy') document.getElementById('btn-hint').disabled = false;
-
+  document.getElementById('btn-hint').disabled = false;
   renderPips();
   renderChain();
   updateGameStats();
   updateProgress();
   showMessage('', '');
-  setTimeout(() => document.getElementById('word-input').focus(), 100);
+  focusTile(currentRow);
 }
 
 function setMode(m) {
   gameMode = m;
   document.getElementById('mode-easy').className = 'mode-btn' + (m === 'easy' ? ' active-easy' : '');
   document.getElementById('mode-hard').className = 'mode-btn' + (m === 'hard' ? ' active-hard' : '');
-  const hintBtn = document.getElementById('btn-hint');
-  const hintStat = document.getElementById('stat-hints-wrap');
-  hintBtn.style.display  = m === 'hard' ? 'none' : 'flex';
-  hintStat.style.display = m === 'hard' ? 'none' : 'block';
   initGame();
 }
 
-// ── Render pips ──────────────────────────────────────────
+// easy: ALL words show clue; hard: ONLY word 0 shows clue
+function shouldShowClue(rowIdx) {
+  if (gameMode === 'easy') return true;
+  if (gameMode === 'hard') return rowIdx === 0;
+  return false;
+}
+
 function renderPips() {
   const c = document.getElementById('wrong-pips');
   c.innerHTML = '';
@@ -70,7 +64,6 @@ function renderPips() {
   });
 }
 
-// ── Render chain ─────────────────────────────────────────
 function renderChain() {
   const chain = document.getElementById('chain');
   chain.innerHTML = '';
@@ -86,11 +79,10 @@ function renderChain() {
 
     const clueLabel = document.createElement('span');
     clueLabel.id = `row-clue-${i}`;
-    clueLabel.className = 'row-clue-label ' +
-      (gameMode === 'hard' ? 'hidden' : (i === currentRow ? 'active' : 'inactive'));
     clueLabel.textContent = entry.clue;
+    clueLabel.className = 'row-clue-label ' +
+      (!shouldShowClue(i) ? 'hidden' : (i === currentRow ? 'active' : 'inactive'));
     rowDiv.appendChild(clueLabel);
-
     chain.appendChild(rowDiv);
 
     if (i < puzzle.words.length - 1) {
@@ -112,15 +104,15 @@ function renderChain() {
     }
   });
 
-  puzzle.words.forEach((_, i) => renderTiles(i));
-  puzzle.words.forEach((_, i) => updatePairLabel(i));
+  puzzle.words.forEach((_, i) => { renderTiles(i); updatePairLabel(i); });
   updateClueDisplay();
 }
 
 function renderTiles(rowIdx) {
-  const entry = puzzle.words[rowIdx];
-  const state = rowStates[rowIdx];
-  const hintsShown = hintedLetters[rowIdx];
+  const entry    = puzzle.words[rowIdx];
+  const state    = rowStates[rowIdx];
+  const locked   = hintedLetters[rowIdx];
+  const typed    = typedLetters[rowIdx];
   const tilesDiv = document.getElementById(`tiles-${rowIdx}`);
   if (!tilesDiv) return;
   tilesDiv.innerHTML = '';
@@ -128,81 +120,76 @@ function renderTiles(rowIdx) {
   for (let i = 0; i < entry.word.length; i++) {
     const tile = document.createElement('div');
     tile.className = 'tile';
+
     if (state.solved) {
       tile.textContent = entry.word[i];
       tile.classList.add(state.revealed ? 'revealed' : 'correct');
     } else if (i === 0) {
       tile.textContent = entry.word[0];
       tile.classList.add('given');
-    } else if (i < hintsShown) {
+    } else if (i < locked) {
       tile.textContent = entry.word[i];
       tile.classList.add('hint-tile');
+    } else if (rowIdx === currentRow) {
+      tile.classList.add('active-word');
+      if (typed[i]) tile.textContent = typed[i];
+      else tile.classList.add('empty');
+      if (i === cursorPos) tile.classList.add('cursor-tile', 'focused');
+      const col = i;
+      tile.addEventListener('click', () => {
+        if (!gameOver) { cursorPos = col; renderTiles(rowIdx); focusHiddenInput(); }
+      });
     } else {
       tile.classList.add('empty');
     }
+
     tilesDiv.appendChild(tile);
   }
 }
 
-function updatePairLabel(i) {
-  if (i >= puzzle.words.length - 1) return;
-  const el = document.getElementById(`pair-${i}`);
-  if (!el) return;
-  const wA = puzzle.words[i], wB = puzzle.words[i + 1];
-  const sA = rowStates[i],    sB = rowStates[i + 1];
-  const showA = sA.solved ? wA.word : wA.word[0] + '___';
-  const showB = sB.solved ? wB.word : wB.word[0] + '___';
-  el.textContent = showA + ' + ' + showB;
-  el.className = 'pair-label' + (sA.solved && sB.solved ? ' revealed-pair' : '');
+function focusTile(rowIdx) {
+  cursorPos = hintedLetters[rowIdx];
+  if (cursorPos >= puzzle.words[rowIdx].word.length) cursorPos = puzzle.words[rowIdx].word.length - 1;
+  renderTiles(rowIdx);
+  focusHiddenInput();
 }
 
-function updateClueHighlight() {
-  if (gameMode === 'hard') return;
-  puzzle.words.forEach((_, i) => {
-    const el = document.getElementById(`row-clue-${i}`);
-    if (el) el.className = 'row-clue-label ' + (i === currentRow && !gameOver ? 'active' : 'inactive');
-  });
+function focusHiddenInput() {
+  const inp = document.getElementById('hidden-input');
+  inp.value = '';
+  inp.focus();
 }
 
-function updateClueDisplay() {
-  const clueEl    = document.getElementById('current-clue');
-  const counterEl = document.getElementById('word-counter');
-  if (gameOver || currentRow >= puzzle.words.length) {
-    clueEl.textContent    = gameOver ? 'game over' : 'chain complete!';
-    counterEl.textContent = '';
-    return;
+function buildGuess(rowIdx) {
+  const entry  = puzzle.words[rowIdx];
+  const locked = hintedLetters[rowIdx];
+  const typed  = typedLetters[rowIdx];
+  let result = '';
+  for (let i = 0; i < entry.word.length; i++) {
+    result += i < locked ? entry.word[i] : (typed[i] || '');
   }
-  const entry = puzzle.words[currentRow];
-  clueEl.textContent    = gameMode === 'easy' ? entry.clue : `word ${currentRow + 1} of ${puzzle.words.length}`;
-  counterEl.textContent = gameMode === 'easy' ? `word ${currentRow + 1} of ${puzzle.words.length}` : '';
-  document.getElementById('word-input').placeholder =
-    entry.word[0] + '_'.repeat(entry.word.length - 1) + ` (${entry.word.length} letters)`;
+  return result;
 }
 
-function updateGameStats() {
-  document.getElementById('stat-hints').textContent = hintsLeft;
-  document.getElementById('stat-score').textContent =
-    rowStates.filter(s => s.solved && !s.revealed).length + '/' + puzzle.words.length;
-  renderPips();
+function isComplete(rowIdx) {
+  const locked = hintedLetters[rowIdx];
+  const typed  = typedLetters[rowIdx];
+  for (let i = locked; i < puzzle.words[rowIdx].word.length; i++) {
+    if (!typed[i]) return false;
+  }
+  return true;
 }
 
-function updateProgress() {
-  const solved = rowStates.filter(s => s.solved && !s.revealed).length;
-  document.getElementById('progress').style.width = (solved / puzzle.words.length * 100) + '%';
-}
-
-// ── Submit guess ─────────────────────────────────────────
 function submitGuess() {
   if (gameOver || currentRow >= puzzle.words.length) return;
-  const input = document.getElementById('word-input');
-  const val   = input.value.trim().toUpperCase();
   const entry = puzzle.words[currentRow];
-  input.value = '';
 
-  if (val.length !== entry.word.length) {
-    showMessage(`needs ${entry.word.length} letters`, 'error');
+  if (!isComplete(currentRow)) {
+    showMessage(`fill all ${entry.word.length} letters first`, 'error');
     return;
   }
+
+  const val = buildGuess(currentRow);
 
   if (val === entry.word) {
     rowStates[currentRow].solved = true;
@@ -220,85 +207,121 @@ function submitGuess() {
     } else {
       showMessage('correct!', 'success');
       updateClueDisplay();
-      setTimeout(() => document.getElementById('word-input').focus(), 50);
+      setTimeout(() => focusTile(currentRow), 100);
     }
   } else {
     wrongCount++;
     updateGameStats();
     const tilesDiv = document.getElementById(`tiles-${currentRow}`);
-    tilesDiv && tilesDiv.querySelectorAll('.tile').forEach(t => t.classList.add('wrong-flash'));
-    setTimeout(() => renderTiles(currentRow), 400);
+    if (tilesDiv) tilesDiv.querySelectorAll('.tile').forEach(t => t.classList.add('wrong-flash'));
+
     if (wrongCount >= MAX_WRONG) {
       setTimeout(() => endGame(false), 450);
     } else {
       showMessage(`wrong — ${MAX_WRONG - wrongCount} guess${MAX_WRONG - wrongCount !== 1 ? 'es' : ''} remaining`, 'error');
-      setTimeout(() => document.getElementById('word-input').focus(), 50);
+      setTimeout(() => {
+        const locked = hintedLetters[currentRow];
+        for (let i = locked; i < typedLetters[currentRow].length; i++) typedLetters[currentRow][i] = null;
+        cursorPos = locked;
+        renderTiles(currentRow);
+        focusHiddenInput();
+      }, 400);
     }
   }
 }
 
-// ── Use hint ─────────────────────────────────────────────
 function useHint() {
-  if (gameMode === 'hard' || hintsLeft <= 0 || gameOver || currentRow >= puzzle.words.length) return;
-  const entry  = puzzle.words[currentRow];
-  const shown  = hintedLetters[currentRow];
-  if (shown >= entry.word.length) { showMessage('all letters shown — just type it!', 'info'); return; }
+  if (hintsLeft <= 0 || gameOver || currentRow >= puzzle.words.length) return;
+  const entry = puzzle.words[currentRow];
+  const shown = hintedLetters[currentRow];
+  if (shown >= entry.word.length) { showMessage('all letters shown!', 'info'); return; }
   hintsLeft--;
   hintedLetters[currentRow]++;
+  typedLetters[currentRow][shown] = entry.word[shown];
+  cursorPos = Math.min(hintedLetters[currentRow], entry.word.length - 1);
   renderTiles(currentRow);
   updateGameStats();
-  showMessage(`next letter: ${entry.word[hintedLetters[currentRow] - 1]}`, 'info');
-  setTimeout(() => document.getElementById('word-input').focus(), 50);
+  showMessage(`letter ${shown + 1}: ${entry.word[shown]}`, 'info');
+  focusHiddenInput();
 }
 
-// ── End game ─────────────────────────────────────────────
+function updateClueHighlight() {
+  puzzle.words.forEach((_, i) => {
+    const el = document.getElementById(`row-clue-${i}`);
+    if (!el) return;
+    if (!shouldShowClue(i)) { el.className = 'row-clue-label hidden'; return; }
+    el.className = 'row-clue-label ' + (i === currentRow && !gameOver ? 'active' : 'inactive');
+  });
+}
+
+function updateClueDisplay() {
+  const clueEl    = document.getElementById('current-clue');
+  const counterEl = document.getElementById('word-counter');
+  if (gameOver || currentRow >= puzzle.words.length) {
+    clueEl.textContent    = gameOver ? 'game over' : 'chain complete!';
+    counterEl.textContent = '';
+    return;
+  }
+  clueEl.textContent    = puzzle.words[currentRow].clue;
+  counterEl.textContent = `word ${currentRow + 1} of ${puzzle.words.length}`;
+}
+
+function updatePairLabel(i) {
+  if (i >= puzzle.words.length - 1) return;
+  const el = document.getElementById(`pair-${i}`);
+  if (!el) return;
+  const wA = puzzle.words[i], wB = puzzle.words[i + 1];
+  const sA = rowStates[i],    sB = rowStates[i + 1];
+  el.textContent = (sA.solved ? wA.word : wA.word[0] + '___') + ' + ' + (sB.solved ? wB.word : wB.word[0] + '___');
+  el.className   = 'pair-label' + (sA.solved && sB.solved ? ' revealed-pair' : '');
+}
+
+function updateGameStats() {
+  document.getElementById('stat-hints').textContent = hintsLeft;
+  document.getElementById('stat-score').textContent =
+    rowStates.filter(s => s.solved && !s.revealed).length + '/' + puzzle.words.length;
+  renderPips();
+}
+
+function updateProgress() {
+  const solved = rowStates.filter(s => s.solved && !s.revealed).length;
+  document.getElementById('progress').style.width = (solved / puzzle.words.length * 100) + '%';
+}
+
 function endGame(won) {
   gameOver = true;
-  document.getElementById('word-input').disabled = true;
-  document.getElementById('btn-submit').disabled = true;
-  document.getElementById('btn-hint').disabled   = true;
+  document.getElementById('btn-hint').disabled = true;
 
   puzzle.words.forEach((_, i) => {
     if (!rowStates[i].solved) { rowStates[i].solved = true; rowStates[i].revealed = true; }
   });
   puzzle.words.forEach((_, i) => { renderTiles(i); updatePairLabel(i); });
-
-  // On game over in hard mode, show clues
-  if (!won) {
-    puzzle.words.forEach((_, i) => {
-      const el = document.getElementById(`row-clue-${i}`);
-      if (el) { el.className = 'row-clue-label inactive'; }
-    });
-  }
-
   updateClueDisplay();
   updateProgress();
 
-  const solvedCount = rowStates.filter(s => !s.revealed).length;
   const hintsUsed   = MAX_HINTS - hintsLeft;
+  const solvedCount = rowStates.filter(s => !s.revealed).length;
 
   if (won) {
     showMessage('🎉 Chain complete! ' +
-      (hintsUsed === 0 ? 'No hints used — perfect!' : `${hintsUsed} hint${hintsUsed !== 1 ? 's' : ''} used.`), 'win');
+      (hintsUsed === 0 ? 'No hints — perfect!' : `${hintsUsed} hint${hintsUsed !== 1 ? 's' : ''} used.`), 'win');
   } else {
     showMessage(`Game over! You solved ${solvedCount} of ${puzzle.words.length}. Answers revealed.`, 'gameover');
   }
 
-  // Save to stats
   saveGameResult({
-    puzzleId:   puzzle.id,
-    theme:      puzzle.theme || 'untitled',
-    mode:       gameMode,
+    puzzleId:     puzzle.id,
+    theme:        puzzle.theme || 'untitled',
+    mode:         gameMode,
     won,
-    solved:     solvedCount,
-    total:      puzzle.words.length,
+    solved:       solvedCount,
+    total:        puzzle.words.length,
     hintsUsed,
     wrongGuesses: wrongCount,
-    timestamp:  Date.now()
+    timestamp:    Date.now()
   });
 }
 
-// ── Animate row ──────────────────────────────────────────
 function animateRow(rowIdx) {
   const tilesDiv = document.getElementById(`tiles-${rowIdx}`);
   if (!tilesDiv) return;
@@ -307,7 +330,6 @@ function animateRow(rowIdx) {
   });
 }
 
-// ── Show message ─────────────────────────────────────────
 function showMessage(text, type) {
   const el = document.getElementById('message');
   el.textContent = text;
