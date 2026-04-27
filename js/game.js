@@ -5,29 +5,47 @@
 const MAX_WRONG = 5;
 const MAX_HINTS = 3;
 
-let puzzle, currentRow, hintsLeft, wrongCount, rowStates, hintedLetters, gameOver, gameMode, typedLetters, cursorPos;
+// Game state
+let puzzle, currentRow, hintsLeft, wrongCount, rowStates, hintedLetters;
+let gameOver, gameMode, typedLetters, cursorPos;
+let isArchiveMode = false; // true when playing from the archive tab
 gameMode = 'easy';
-let lastPuzzleId = null;
 
-function pickPuzzle() {
-  const pool = PUZZLES.filter(p => p.id !== lastPuzzleId);
-  const p = pool[Math.floor(Math.random() * pool.length)];
-  lastPuzzleId = p.id;
-  return p;
+// ── Daily puzzle selection ────────────────────────────────
+// Returns the puzzle for today based on calendar date
+function getTodaysPuzzle() {
+  const epoch = new Date('2025-01-01').getTime();
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const dayNum = Math.floor((today.getTime() - epoch) / 86400000);
+  const idx = dayNum % DAILY_PUZZLES.length;
+  return DAILY_PUZZLES[idx];
 }
 
-function initGame() {
-  puzzle        = pickPuzzle();
-  currentRow    = 0;
-  hintsLeft     = MAX_HINTS;
-  wrongCount    = 0;
-  gameOver      = false;
-  rowStates     = puzzle.words.map(() => ({ solved: false, revealed: false }));
+function getTodayKey() {
+  const today = new Date();
+  return `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+}
+
+// ── Init game ─────────────────────────────────────────────
+function initGame(puzzleOverride, archiveMode) {
+  isArchiveMode = archiveMode || false;
+  puzzle = puzzleOverride || getTodaysPuzzle();
+  currentRow   = 0;
+  hintsLeft    = MAX_HINTS;
+  wrongCount   = 0;
+  gameOver     = false;
+  rowStates    = puzzle.words.map(() => ({ solved: false, revealed: false }));
   hintedLetters = puzzle.words.map(() => 1);
   typedLetters  = puzzle.words.map(w => new Array(w.word.length).fill(null));
   cursorPos     = 1;
 
   document.getElementById('btn-hint').disabled = false;
+
+  // Show archive badge if in archive mode
+  const badge = document.getElementById('archive-badge');
+  if (badge) badge.style.display = isArchiveMode ? 'flex' : 'none';
+
   renderPips();
   renderChain();
   updateGameStats();
@@ -40,14 +58,14 @@ function setMode(m) {
   gameMode = m;
   document.getElementById('mode-easy').className = 'mode-btn' + (m === 'easy' ? ' active-easy' : '');
   document.getElementById('mode-hard').className = 'mode-btn' + (m === 'hard' ? ' active-hard' : '');
-  initGame();
+  // Re-init with same puzzle/mode
+  initGame(puzzle, isArchiveMode);
 }
 
 // easy: ALL words show clue; hard: ONLY word 0 shows clue
 function shouldShowClue(rowIdx) {
   if (gameMode === 'easy') return true;
-  if (gameMode === 'hard') return rowIdx === 0;
-  return false;
+  return rowIdx === 0;
 }
 
 function renderPips() {
@@ -67,11 +85,9 @@ function renderPips() {
 function renderChain() {
   const chain = document.getElementById('chain');
   chain.innerHTML = '';
-
   puzzle.words.forEach((entry, i) => {
     const rowDiv = document.createElement('div');
     rowDiv.className = 'chain-row';
-
     const tiles = document.createElement('div');
     tiles.className = 'tiles';
     tiles.id = `tiles-${i}`;
@@ -103,7 +119,6 @@ function renderChain() {
       chain.appendChild(linkRow);
     }
   });
-
   puzzle.words.forEach((_, i) => { renderTiles(i); updatePairLabel(i); });
   updateClueDisplay();
 }
@@ -142,7 +157,6 @@ function renderTiles(rowIdx) {
     } else {
       tile.classList.add('empty');
     }
-
     tilesDiv.appendChild(tile);
   }
 }
@@ -183,12 +197,10 @@ function isComplete(rowIdx) {
 function submitGuess() {
   if (gameOver || currentRow >= puzzle.words.length) return;
   const entry = puzzle.words[currentRow];
-
   if (!isComplete(currentRow)) {
     showMessage(`fill all ${entry.word.length} letters first`, 'error');
     return;
   }
-
   const val = buildGuess(currentRow);
 
   if (val === entry.word) {
@@ -201,7 +213,6 @@ function submitGuess() {
     updateGameStats();
     updateProgress();
     updateClueHighlight();
-
     if (currentRow >= puzzle.words.length) {
       endGame(true);
     } else {
@@ -214,7 +225,6 @@ function submitGuess() {
     updateGameStats();
     const tilesDiv = document.getElementById(`tiles-${currentRow}`);
     if (tilesDiv) tilesDiv.querySelectorAll('.tile').forEach(t => t.classList.add('wrong-flash'));
-
     if (wrongCount >= MAX_WRONG) {
       setTimeout(() => endGame(false), 450);
     } else {
@@ -309,17 +319,24 @@ function endGame(won) {
     showMessage(`Game over! You solved ${solvedCount} of ${puzzle.words.length}. Answers revealed.`, 'gameover');
   }
 
-  saveGameResult({
-    puzzleId:     puzzle.id,
-    theme:        puzzle.theme || 'untitled',
-    mode:         gameMode,
-    won,
-    solved:       solvedCount,
-    total:        puzzle.words.length,
-    hintsUsed,
-    wrongGuesses: wrongCount,
-    timestamp:    Date.now()
-  });
+  // Only save to stats if it's today's daily puzzle (not archive)
+  if (!isArchiveMode) {
+    // Mark today's puzzle as played in localStorage
+    localStorage.setItem('lastPlayedDate', getTodayKey());
+    localStorage.setItem('lastPlayedResult', JSON.stringify({ won, solvedCount, hintsUsed, wrongCount }));
+
+    saveGameResult({
+      puzzleId:     puzzle.id,
+      theme:        puzzle.theme || 'untitled',
+      mode:         gameMode,
+      won,
+      solved:       solvedCount,
+      total:        puzzle.words.length,
+      hintsUsed,
+      wrongGuesses: wrongCount,
+      timestamp:    Date.now()
+    });
+  }
 }
 
 function animateRow(rowIdx) {

@@ -1,230 +1,251 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#ffffff" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Chain Reaction" />
-  <meta name="description" content="A compound word chain puzzle game" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Chain Reaction</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-  <!-- AUTH SCREEN -->
-  <div id="screen-auth" class="screen active">
-    <div class="auth-wrap">
-      <div class="auth-logo">
-        <h1>Chain Reaction</h1>
-        <p class="auth-tagline">compound word chain puzzle</p>
-      </div>
+<!-- ── HEADER ─────────────────────────────────────────── -->
+<header class="header">
+  <div class="header-left">
+    <button id="btn-info" class="icon-btn" title="How to play">?</button>
+  </div>
+  <div class="header-title">
+    <span class="title-chain">Chain</span>
+    <span class="title-reaction"> Reaction</span>
+  </div>
+  <div class="header-right">
+    <button id="btn-stats"   class="icon-btn" title="Stats">📊</button>
+    <button id="btn-profile" class="icon-btn" title="Account">👤</button>
+  </div>
+</header>
 
-      <div id="auth-tabs" class="auth-tabs">
-        <button class="auth-tab active" data-tab="signin">sign in</button>
-        <button class="auth-tab" data-tab="signup">sign up</button>
-      </div>
+<!-- ── TABS ──────────────────────────────────────────── -->
+<div class="tabs-bar">
+  <button id="tab-daily"   class="tab-btn active">Today's Chain</button>
+  <button id="tab-archive" class="tab-btn">Archive</button>
+</div>
 
-      <div id="auth-error" class="auth-error hidden"></div>
+<!-- ── DAILY SECTION ─────────────────────────────────── -->
+<main id="daily-section">
 
-      <form id="auth-form" class="auth-form" autocomplete="on">
-        <input type="email" id="auth-email" placeholder="email address" autocomplete="email" required />
-        <input type="password" id="auth-password" placeholder="password" autocomplete="current-password" required />
-        <input type="text" id="auth-name" placeholder="display name" class="hidden" autocomplete="name" />
-        <button type="submit" class="btn btn-primary" id="auth-submit">sign in</button>
-      </form>
-
-      <div class="auth-divider"><span>or</span></div>
-
-      <button class="btn btn-google" id="btn-google">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-          <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-          <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-          <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-        </svg>
-        continue with Google
-      </button>
-
-      <button class="btn btn-ghost" id="btn-guest">play as guest</button>
-    </div>
+  <!-- Archive-mode banner (shown when playing an archive puzzle in this area) -->
+  <div id="archive-badge" style="display:none" class="archive-playing-badge">
+    📚 Playing Archive Puzzle — results won't affect your stats
   </div>
 
-  <!-- MAIN GAME SCREEN -->
-  <div id="screen-game" class="screen">
-
-    <!-- Top nav -->
-    <header class="top-bar">
-      <button class="icon-btn" id="btn-stats-open" title="stats">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 20V10M12 20V4M6 20v-6"/>
-        </svg>
-      </button>
-      <div class="top-title">
-        <span class="top-game-title">Chain Reaction</span>
-      </div>
-      <button class="icon-btn" id="btn-profile-open" title="profile">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-        </svg>
-      </button>
-    </header>
-
-    <!-- Mode selector -->
-    <div class="mode-row">
-      <button class="mode-btn active-easy" id="mode-easy">easy</button>
-      <button class="mode-btn" id="mode-hard">hard</button>
-    </div>
-
-    <!-- Stats bar -->
-    <div class="stats-row">
-      <div class="stat" id="stat-hints-wrap">
-        <div class="stat-val hints" id="stat-hints">3</div>
-        <div class="stat-lbl">hints left</div>
-      </div>
-      <div class="stat">
-        <div class="wrong-pips" id="wrong-pips"></div>
-        <div class="stat-lbl" style="margin-top:6px">wrong guesses</div>
-      </div>
-      <div class="stat">
-        <div class="stat-val score" id="stat-score">0/6</div>
-        <div class="stat-lbl">solved</div>
+  <!-- Game play area -->
+  <div id="daily-play-area">
+    <div class="game-meta">
+      <div id="puzzle-theme" class="puzzle-theme"></div>
+      <div class="mode-toggle">
+        <button id="mode-easy" class="mode-btn active-easy">Easy</button>
+        <button id="mode-hard" class="mode-btn">Hard</button>
       </div>
     </div>
 
-    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+    <div class="status-bar">
+      <div class="stat-pill">
+        <span class="stat-label">solved</span>
+        <span class="stat-value" id="stat-score">0/6</span>
+      </div>
+      <div id="wrong-pips" class="pips-row"></div>
+      <div class="hint-pips-row">
+        <span class="hint-label">hints</span>
+        <div id="hpip1" class="hint-pip"></div>
+        <div id="hpip2" class="hint-pip"></div>
+        <div id="hpip3" class="hint-pip"></div>
+        <span class="stat-value" id="stat-hints">3</span>
+      </div>
+    </div>
+
+    <div class="clue-bar">
+      <span id="current-clue" class="current-clue"></span>
+      <span id="word-counter" class="word-counter"></span>
+    </div>
+
+    <div class="progress-track">
+      <div id="progress" class="progress-fill"></div>
+    </div>
+
     <div id="message" class="message"></div>
+    <div id="chain" class="chain"></div>
+    <input id="hidden-input" type="text" autocomplete="off" autocorrect="off"
+           autocapitalize="characters" spellcheck="false"
+           style="position:fixed;opacity:0;pointer-events:none;top:0;left:0;width:1px;height:1px">
 
-    <!-- Theme badge -->
-    <div class="theme-badge-wrap">
-      <span class="theme-badge" id="theme-badge"> </span>
+    <div class="action-row">
+      <button id="btn-hint"  class="btn btn-hint">💡 Hint</button>
+      <button id="btn-enter" class="btn btn-enter">Enter ↵</button>
     </div>
 
-    <!-- Chain -->
-    <div class="chain" id="chain"></div>
-
-    <!-- Input -->
-    <div class="input-area">
-      <div class="input-row">
-        <input type="text" class="word-input" id="word-input" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
-        <button class="btn btn-submit" id="btn-submit">Enter</button>
+    <div class="keyboard">
+      <div class="kb-row">
+        <button class="key-btn" data-key="Q">Q</button>
+        <button class="key-btn" data-key="W">W</button>
+        <button class="key-btn" data-key="E">E</button>
+        <button class="key-btn" data-key="R">R</button>
+        <button class="key-btn" data-key="T">T</button>
+        <button class="key-btn" data-key="Y">Y</button>
+        <button class="key-btn" data-key="U">U</button>
+        <button class="key-btn" data-key="I">I</button>
+        <button class="key-btn" data-key="O">O</button>
+        <button class="key-btn" data-key="P">P</button>
       </div>
-      <div class="status-row">
-        <span class="current-clue" id="current-clue">—</span>
-        <span id="word-counter"></span>
+      <div class="kb-row">
+        <button class="key-btn" data-key="A">A</button>
+        <button class="key-btn" data-key="S">S</button>
+        <button class="key-btn" data-key="D">D</button>
+        <button class="key-btn" data-key="F">F</button>
+        <button class="key-btn" data-key="G">G</button>
+        <button class="key-btn" data-key="H">H</button>
+        <button class="key-btn" data-key="J">J</button>
+        <button class="key-btn" data-key="K">K</button>
+        <button class="key-btn" data-key="L">L</button>
+      </div>
+      <div class="kb-row">
+        <button class="key-btn wide" data-key="ENTER">Enter</button>
+        <button class="key-btn" data-key="Z">Z</button>
+        <button class="key-btn" data-key="X">X</button>
+        <button class="key-btn" data-key="C">C</button>
+        <button class="key-btn" data-key="V">V</button>
+        <button class="key-btn" data-key="B">B</button>
+        <button class="key-btn" data-key="N">N</button>
+        <button class="key-btn" data-key="M">M</button>
+        <button class="key-btn wide" data-key="DEL">⌫</button>
       </div>
     </div>
+  </div><!-- /daily-play-area -->
 
-    <!-- Actions -->
-    <div class="actions">
-      <button class="btn btn-hint" id="btn-hint">
-        <span class="hint-pip" id="hpip1"></span>
-        <span class="hint-pip" id="hpip2"></span>
-        <span class="hint-pip" id="hpip3"></span>
-        hint
+  <!-- Already played today screen -->
+  <div id="daily-done-screen" style="display:none" class="done-screen">
+    <div class="done-inner">
+      <div class="done-icon">🔗</div>
+      <h2 class="done-title">Today's chain is done!</h2>
+      <p id="daily-done-msg" class="done-msg"></p>
+      <div id="daily-countdown" class="done-countdown"></div>
+      <button class="btn btn-archive-cta" onclick="switchTab('archive')">
+        📚 Browse the Archive
       </button>
-      <button class="btn btn-new" id="btn-new">new game</button>
-    </div>
-
-    <input style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" id="hidden-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
-
-  </div>
-
-  <!-- STATS MODAL -->
-  <div id="modal-stats" class="modal-overlay hidden">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>your stats</h2>
-        <button class="icon-btn" id="btn-stats-close">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-big" id="ms-attempted">0</div>
-            <div class="stat-name">attempted</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-big" id="ms-completed">0</div>
-            <div class="stat-name">completed</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-big" id="ms-avg-attempts">—</div>
-            <div class="stat-name">avg wrong / win</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-big" id="ms-streak">0</div>
-            <div class="stat-name">streak</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-big" id="ms-best-streak">0</div>
-            <div class="stat-name">best streak</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-big" id="ms-hints">0</div>
-            <div class="stat-name">hints used</div>
-          </div>
-        </div>
-
-        <div class="stats-section">
-          <div class="stats-section-title">mode breakdown</div>
-          <div class="mode-stats-row">
-            <div class="mode-stat-block easy-block">
-              <div class="mode-label">easy</div>
-              <div class="mode-nums"><span id="ms-easy-completed">0</span>W / <span id="ms-easy-attempted">0</span>P</div>
-            </div>
-            <div class="mode-stat-block hard-block">
-              <div class="mode-label">hard</div>
-              <div class="mode-nums"><span id="ms-hard-completed">0</span>W / <span id="ms-hard-attempted">0</span>P</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="stats-section">
-          <div class="stats-section-title">recent games</div>
-          <div id="recent-games-list" class="recent-games"></div>
-        </div>
-      </div>
     </div>
   </div>
 
-  <!-- PROFILE MODAL -->
-  <div id="modal-profile" class="modal-overlay hidden">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>profile</h2>
-        <button class="icon-btn" id="btn-profile-close">✕</button>
+</main><!-- /daily-section -->
+
+<!-- ── ARCHIVE SECTION ────────────────────────────────── -->
+<section id="archive-section" style="display:none">
+  <div class="archive-header">
+    <h2>Archive</h2>
+    <p class="archive-desc">Play past daily puzzles and bonus chains. Results don't count toward your stats.</p>
+  </div>
+  <div id="archive-list" class="archive-list"></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- MODALS                                               -->
+<!-- ══════════════════════════════════════════════════════ -->
+
+<!-- Stats Modal -->
+<div id="stats-modal" class="modal-overlay">
+  <div class="modal">
+    <button id="close-stats" class="modal-close">✕</button>
+    <h2 class="modal-title">Your Stats</h2>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="sb-val" id="ms-attempted">—</div><div class="sb-lbl">played</div></div>
+      <div class="stat-box"><div class="sb-val" id="ms-completed">—</div><div class="sb-lbl">won</div></div>
+      <div class="stat-box"><div class="sb-val" id="ms-avg-wrong">—</div><div class="sb-lbl">avg wrong/win</div></div>
+      <div class="stat-box"><div class="sb-val" id="ms-streak">—</div><div class="sb-lbl">streak</div></div>
+      <div class="stat-box"><div class="sb-val" id="ms-best-streak">—</div><div class="sb-lbl">best streak</div></div>
+      <div class="stat-box"><div class="sb-val" id="ms-hints">—</div><div class="sb-lbl">hints used</div></div>
+    </div>
+    <div class="mode-stats-row">
+      <div class="mode-stat-box easy">
+        <div class="ms-mode-label">Easy</div>
+        <div class="ms-mode-val"><span id="ms-easy-completed">0</span> / <span id="ms-easy-attempted">0</span></div>
       </div>
-      <div class="modal-body">
-        <div class="profile-info">
-          <div class="profile-avatar" id="profile-avatar">?</div>
-          <div class="profile-details">
-            <div class="profile-name" id="profile-name">Guest</div>
-            <div class="profile-email" id="profile-email">not signed in</div>
-          </div>
-        </div>
-        <div id="profile-actions">
-          <button class="btn btn-primary" id="btn-signin-from-profile">sign in to save stats</button>
-        </div>
-        <div id="signout-actions" class="hidden">
-          <button class="btn btn-ghost btn-danger" id="btn-signout">sign out</button>
-        </div>
+      <div class="mode-stat-box hard">
+        <div class="ms-mode-label">Hard</div>
+        <div class="ms-mode-val"><span id="ms-hard-completed">0</span> / <span id="ms-hard-attempted">0</span></div>
       </div>
     </div>
+    <h3 class="recent-title">Recent Games</h3>
+    <div id="recent-games-list" class="recent-games"></div>
+    <p class="stats-note">Only daily puzzle plays count toward stats.</p>
   </div>
+</div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!-- Profile Modal -->
+<div id="profile-modal" class="modal-overlay">
+  <div class="modal">
+    <button id="close-profile" class="modal-close">✕</button>
+    <h2 class="modal-title">Account</h2>
+    <div id="auth-section">
+      <div id="logged-in-view" style="display:none">
+        <p id="user-email" class="user-email"></p>
+        <button id="sign-out-btn" class="btn btn-signout">Sign Out</button>
+      </div>
+      <div id="logged-out-view">
+        <p class="auth-desc">Sign in to save your stats across devices.</p>
+        <form id="login-form">
+          <input id="email-inp" type="email" placeholder="Email" class="auth-inp">
+          <input id="pass-inp"  type="password" placeholder="Password" class="auth-inp">
+          <button type="submit" class="btn btn-auth">Sign In</button>
+        </form>
+        <button id="signup-btn"  class="btn btn-auth-sec">Create Account</button>
+        <button id="google-btn"  class="btn btn-google">Sign in with Google</button>
+      </div>
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+  </div>
+</div>
 
-  <script src="js/config.js"></script>
-  <script src="js/puzzles.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/stats.js"></script>
-  <script src="js/app.js"></script>
+<!-- Info Modal -->
+<div id="info-modal" class="modal-overlay">
+  <div class="modal">
+    <button id="close-info" class="modal-close">✕</button>
+    <h2 class="modal-title">How to Play</h2>
+    <div class="info-content">
+      <p>Build a chain of compound words. Each word connects to the next.</p>
+      <div class="example-chain">
+        <span class="ex-word">CAMP</span><span class="ex-plus">+</span>
+        <span class="ex-word">FIRE</span><span class="ex-plus">+</span>
+        <span class="ex-word">WORK</span><span class="ex-plus">+</span>
+        <span class="ex-word">OUT</span>
+      </div>
+      <ul class="info-list">
+        <li>The <strong>first letter</strong> of each word is always shown.</li>
+        <li>In <strong>Easy</strong> mode, every word has a clue visible.</li>
+        <li>In <strong>Hard</strong> mode, only the first word's clue is shown.</li>
+        <li>You have <strong>3 hints</strong> — each reveals one more letter.</li>
+        <li>5 wrong guesses ends the game.</li>
+        <li><strong>One new daily puzzle per day</strong>, same for everyone.</li>
+        <li>Past dailies and bonus puzzles are always playable in the <strong>Archive</strong>.</li>
+        <li>Only today's daily counts toward your stats.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<!-- App scripts -->
+<script src="js/config.js"></script>
+<script src="js/puzzles.js"></script>
+<script src="js/game.js"></script>
+<script src="js/stats.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+
 </body>
 </html>
