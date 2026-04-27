@@ -129,6 +129,8 @@
       <button class="btn btn-new" id="btn-new">new game</button>
     </div>
 
+    <input style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none" id="hidden-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" />
+
   </div>
 
   <!-- STATS MODAL -->
@@ -141,16 +143,16 @@
       <div class="modal-body">
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-big" id="ms-played">0</div>
-            <div class="stat-name">played</div>
+            <div class="stat-big" id="ms-attempted">0</div>
+            <div class="stat-name">attempted</div>
           </div>
           <div class="stat-card">
-            <div class="stat-big" id="ms-wins">0</div>
-            <div class="stat-name">wins</div>
+            <div class="stat-big" id="ms-completed">0</div>
+            <div class="stat-name">completed</div>
           </div>
           <div class="stat-card">
-            <div class="stat-big" id="ms-winpct">0%</div>
-            <div class="stat-name">win rate</div>
+            <div class="stat-big" id="ms-avg-attempts">—</div>
+            <div class="stat-name">avg wrong / win</div>
           </div>
           <div class="stat-card">
             <div class="stat-big" id="ms-streak">0</div>
@@ -171,11 +173,11 @@
           <div class="mode-stats-row">
             <div class="mode-stat-block easy-block">
               <div class="mode-label">easy</div>
-              <div class="mode-nums"><span id="ms-easy-wins">0</span>W / <span id="ms-easy-played">0</span>P</div>
+              <div class="mode-nums"><span id="ms-easy-completed">0</span>W / <span id="ms-easy-attempted">0</span>P</div>
             </div>
             <div class="mode-stat-block hard-block">
               <div class="mode-label">hard</div>
-              <div class="mode-nums"><span id="ms-hard-wins">0</span>W / <span id="ms-hard-played">0</span>P</div>
+              <div class="mode-nums"><span id="ms-hard-completed">0</span>W / <span id="ms-hard-attempted">0</span>P</div>
             </div>
           </div>
         </div>
