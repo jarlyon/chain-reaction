@@ -1,9 +1,3 @@
-// ─────────────────────────────────────────────────────────
-//  FIREBASE CONFIG
-//  Replace these values with your own Firebase project config.
-//  Get them from: Firebase Console → Project Settings → Your Apps → Web App
-// ─────────────────────────────────────────────────────────
-
 const firebaseConfig = {
   apiKey: "AIzaSyC5iMzlQGLNccvx4RbzqXDnah2RgNoC6TE",
   authDomain: "chain-gang-4c4a3.firebaseapp.com",
@@ -13,6 +7,6 @@ const firebaseConfig = {
   appId: "1:1096442282096:web:c37a7a2b1ef66f1e18f4b5"
 };
 
-// Initialize Firebase
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
