@@ -4,7 +4,7 @@
 //  Get them from: Firebase Console → Project Settings → Your Apps → Web App
 // ─────────────────────────────────────────────────────────
 
-const FIREBASE_CONFIG = {
+const firebaseConfig = {
   apiKey: "AIzaSyC5iMzlQGLNccvx4RbzqXDnah2RgNoC6TE",
   authDomain: "chain-gang-4c4a3.firebaseapp.com",
   projectId: "chain-gang-4c4a3",
@@ -13,9 +13,6 @@ const FIREBASE_CONFIG = {
   appId: "1:1096442282096:web:c37a7a2b1ef66f1e18f4b5"
 };
 
-firebase.initializeApp(FIREBASE_CONFIG);
-
-const auth = firebase.auth();
-const db   = firebase.firestore();
-
-const googleProvider = new firebase.auth.GoogleAuthProvider();
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
